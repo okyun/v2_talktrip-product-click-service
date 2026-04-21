@@ -2,6 +2,7 @@ package org.example.talktripproductclickservice.messaging.consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.example.talktripproductclickservice.domain.click.service.ProductClickPersistService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
@@ -20,6 +21,12 @@ import java.util.Map;
 public class ProductClickDebugConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductClickDebugConsumer.class);
+
+    private final ProductClickPersistService persistService;
+
+    public ProductClickDebugConsumer(ProductClickPersistService persistService) {
+        this.persistService = persistService;
+    }
 
     @KafkaListener(
             topics = "${kafka.topics.product-click:product-click}",
@@ -55,6 +62,9 @@ public class ProductClickDebugConsumer {
         Long memberId = numberFromPayload(payload, "memberId");
         logger.debug("product-click 수신(audit): productId={}, memberId={}, topic={}, partition={}, offset={}, key={}",
                 productId, memberId, topic, partition, offset, key);
+
+        // audit group에서만 clickDB에 적재 (debug group까지 저장하면 2중 적재됨)
+        persistService.save(payload, productId, memberId, topic, partition, offset, key);
     }
 
     private Long numberFromPayload(Map<String, Object> payload, String key) {
